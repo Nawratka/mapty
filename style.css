@@ -32,6 +32,7 @@ body {
   padding: 2.5rem;
 
   display: flex;
+  position: relative;
 }
 
 /* GENERAL */
@@ -120,19 +121,19 @@ a:visited {
     margin-left: 0.2rem;
     cursor: pointer;
   }
-  img[src="./filter.svg"] {
+  img[src='./filter.svg'] {
     margin-right: 2rem;
-  } 
+  }
 }
 
 .main-edits .workout__icon {
   display: flex;
-  margin: 0 0.8rem
+  margin: 0 0.8rem;
 }
 
 .workout__edits .workout__icon {
-margin: 0.5em;
-cursor: pointer;
+  margin: 0.5em;
+  cursor: pointer;
 }
 
 .workout__value {
@@ -221,6 +222,49 @@ cursor: pointer;
 .twitter-link:hover,
 .twitter-link:active {
   color: var(--color-light--2);
+}
+
+.edit-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 220px;
+  width: 425px;
+  background-color: var(--color-light--2);
+  color: #2d3439;
+  border-radius: 6px;
+  border: 7px solid var(--color-brand--2);
+  box-shadow: 8px 8px 24px 0px rgba(66, 68, 90, 1);
+  z-index: 500;
+  .workout__title {
+    padding: 1.5rem 1.5rem 0;
+  }
+  .form {
+    background-color: inherit;
+  }
+  .form__row {
+    width: 100%;
+  }
+  .form__btns {
+    justify-content: space-evenly;
+    .form__btn {
+      display: flex;
+      justify-content: center;
+      width: 100px;
+      padding: 0.6rem 1.2rem;
+      border-radius: 5px;
+      border: 1px solid var(--color-dark--2);
+      cursor: pointer;
+    }
+    .form__btn:hover {
+      background-color: var(--color-light--3);
+    }
+  }
+}
+
+.edit-box--hidden {
+  display: none;
 }
 
 /* MAP */
