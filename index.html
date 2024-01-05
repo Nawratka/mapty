@@ -122,37 +122,41 @@
     </p>
   </div>
 
-  <div class="edit-box">
-    <h2 class="workout__title">Edit workout:</h2>
+  <div class="edit-box edit-box--hidden">
+    <h1 class="workout__title edit-title">Edit workout:</h1>
+    <h2 class="workout__title edited-title">title</h2>
     <form class="form">
       <div class="form__row">
         <label class="form__label">Type</label>
-        <select class="form__input form__input--type">
+        <select class="form__input form__input--type edit__input--type">
           <option value="running">Running</option>
           <option value="cycling">Cycling</option>
         </select>
       </div>
       <div class="form__row">
         <label class="form__label">Distance</label>
-        <input class="form__input form__input--distance" placeholder="km" />
+        <input class="form__input form__input--distance edit__input--distance" placeholder="km" />
       </div>
       <div class="form__row">
         <label class="form__label">Duration</label>
-        <input class="form__input form__input--duration" placeholder="min" />
+        <input class="form__input form__input--duration edit__input--duration" placeholder="min" />
       </div>
       <div class="form__row">
         <label class="form__label">Cadence</label>
-        <input class="form__input form__input--cadence" placeholder="step/min" />
+        <input class="form__input form__input--cadence edit__input--cadence" placeholder="step/min" />
       </div>
       <div class="form__row form__row--hidden">
         <label class="form__label">Elev Gain</label>
-        <input class="form__input form__input--elevation" placeholder="meters" />
+        <input class="form__input form__input--elevation edit__input--elevation" placeholder="meters" />
       </div>
+
+      <div class="form__row form__btns">
+        <button class="form__btn form__btn--ok">OK</button>
+        <button class="form__btn form__btn--cancel">Cancel</button>
+      </div>
+
     </form>
-    <div class="form__row form__btns">
-      <button class="form__btn">OK</button>
-      <button class="form__btn">Cancel</button>
-    </div>
+
   </div>
 
   <div id="map"></div>

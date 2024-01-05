@@ -1,13 +1,24 @@
 'use strict';
 
 const form = document.querySelector('.form');
+const deleteAllItemsBtn = document.querySelector('.delall-btn');
 const containerWorkouts = document.querySelector('.workouts');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
-const deleteAllItemsBtn = document.querySelector('.delall-btn');
+///edit///////////////////
+// EDIT-BOX
+const editBox = document.querySelector('.edit-box');
+const editBtnCancel = document.querySelector('.form__btn--cancel');
+const editBtnOk = document.querySelector('.form__btn--ok');
+let editInputType = document.querySelector('.edit__input--type');
+let editInputDistance = document.querySelector('.edit__input--distance');
+let editInputDuration = document.querySelector('.edit__input--duration');
+let editInputCadence = document.querySelector('.edit__input--cadence');
+let editInputElevation = document.querySelector('.edit__input--elevation');
+let boxTitle = editBox.querySelector('.edited-title');
 
 class Workout {
   date = new Date();
@@ -74,7 +85,7 @@ class App {
   #workouts = [];
   #markers = [];
   #i = 0;
-  // #marker;
+  #editedWorkout;
 
   constructor() {
     // get user's position
@@ -86,19 +97,44 @@ class App {
     form.addEventListener('submit', this._newWorkout.bind(this));
 
     inputType.addEventListener('change', this._toggleElevationField);
+    editInputType.addEventListener('change', this._toggleElevationField);
     // containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     containerWorkouts.addEventListener('click', this._clickCheck.bind(this));
     deleteAllItemsBtn.addEventListener('click', this.reset);
+    editBtnCancel.addEventListener('click', e => {
+      e.preventDefault();
+      editBox.classList.add('edit-box--hidden');
+    });
+    editBtnOk.addEventListener('click', e => {
+      // set new item from edit box
+      this._newWorkout(e);
+      console.log(this.#editedWorkout);
+      
+      // establish item to cancel (edited old element) based on date
+      const currentObjDate = this.#editedWorkout.date;
+      const objToDel = this.#workouts.find(el => {
+        if (el.date === currentObjDate) return el;
+      });
+      const liToDel = document.querySelector(`[data-id="${objToDel.id}"]`);
+      this._deleteItem(liToDel);
+      
+      // close edit window
+      editBox.classList.add('edit-box--hidden');
+    });
   }
 
   _clickCheck(e) {
     const clickedElem = e.target;
+    const workout = e.target.closest('li');
     if (clickedElem.classList.contains('delete-item')) {
-      const workout = e.target.closest('li');
       this._deleteItem(workout);
-    } else {
-      this._moveToPopup(e);
+      return;
     }
+    if (clickedElem.classList.contains('edit-item')) {
+      this._editItem.call(this, clickedElem);
+      return;
+    }
+    this._moveToPopup(e);
   }
 
   _getPosition() {
@@ -138,6 +174,9 @@ class App {
   _showForm(mapE) {
     this.#mapEvent = mapE;
     form.classList.remove('hidden');
+    inputType.value = 'running';
+    inputElevation.closest('.form__row').classList.add('form__row--hidden');
+    inputCadence.closest('.form__row').classList.remove('form__row--hidden');
     inputDistance.focus();
   }
 
@@ -148,19 +187,30 @@ class App {
       inputDuration.value =
       inputElevation.value =
         '';
-    inputType.value = 'running';
 
     form.style.display = 'none';
     form.classList.add('hidden');
     setTimeout(() => (form.style.display = 'grid'), 1000);
   }
 
-  _toggleElevationField() {
+  _toggleElevationField(e) {
+    if (e.target.classList.contains('edit__input--type')) {
+      editInputElevation
+        .closest('.form__row')
+        .classList.toggle('form__row--hidden');
+      editInputCadence
+        .closest('.form__row')
+        .classList.toggle('form__row--hidden');
+      return;
+    }
     inputElevation.closest('.form__row').classList.toggle('form__row--hidden');
     inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
   }
 
   _newWorkout(e) {
+    const isDataEdited = e.target.classList.contains('form__btn--ok');
+    console.log(this.#editedWorkout);
+
     // helper functions
     const validInputs = (...inputs) =>
       inputs.every(inp => Number.isFinite(inp));
@@ -168,16 +218,31 @@ class App {
 
     e.preventDefault();
 
-    // get data from form
-    const type = inputType.value;
-    const distance = +inputDistance.value;
-    const duration = +inputDuration.value;
-    const { lat, lng } = this.#mapEvent.latlng;
+    let type, distance, duration, lat, lng;
+
+    // get data
+    if (isDataEdited) {
+      // get data from edit window
+      type = editInputType.value;
+      distance = +editInputDistance.value;
+      duration = +editInputDuration.value;
+      lat = this.#editedWorkout.coords[0];
+      lng = this.#editedWorkout.coords[1];
+      // const { lat, lng } = this.#editedWorkout.coords;
+    } else {
+      // get data from form
+      type = inputType.value;
+      distance = +inputDistance.value;
+      duration = +inputDuration.value;
+      lat = this.#mapEvent.latlng.lat;
+      lng = this.#mapEvent.latlng.lng;
+    }
     let workout;
 
     // check if data is valid
     if (type === 'running') {
-      const cadence = +inputCadence.value;
+      let cadence = +inputCadence.value;
+      if (isDataEdited) cadence = +editInputCadence.value;
       if (
         !validInputs(distance, duration, cadence) ||
         !allPositive(distance, duration, cadence)
@@ -189,7 +254,8 @@ class App {
     }
 
     if (type === 'cycling') {
-      const elevation = +inputElevation.value;
+      let elevation = +inputElevation.value;
+      if (isDataEdited) elevation = +editInputElevation.value;
       if (
         !validInputs(distance, duration, elevation) ||
         !allPositive(distance, duration)
@@ -385,6 +451,67 @@ class App {
     // remove single popup marker = remove layer from map
     const indexMarkerToDel = elem.dataset.leafletid;
     this.#map.removeLayer(this.#markers[indexMarkerToDel]);
+  }
+
+  _editItem(clickedElem) {
+    let item = clickedElem.closest('li');
+    let workoutObj = this.#workouts.find(el => el.id === item.dataset.id);
+    this.#editedWorkout = workoutObj;
+    console.log(this.#editedWorkout);
+    // edit box title of item
+    let itemTitle = item.children[0].textContent;
+    boxTitle.textContent = itemTitle;
+
+    // type
+    let type = item.classList[1].slice(9);
+    type === 'running'
+      ? (editInputType.value = 'running')
+      : (editInputType.value = 'cycling');
+
+    // distance
+    const distance = item.children[1].children[1].textContent;
+    editInputDistance.value = distance;
+
+    // duration
+    const duration = item.children[2].children[1].textContent;
+    editInputDuration.value = duration;
+
+    // cadence
+    const cadence = item.children[3].children[1].textContent;
+    editInputCadence.value = cadence;
+
+    // elevation
+    const elevation = item.children[4].children[1].textContent;
+    editInputElevation.value = elevation;
+
+    // setting wheter elev / cadence should be displayed
+    if (type === 'running') {
+      editInputElevation
+        .closest('.form__row')
+        .classList.add('form__row--hidden');
+      editInputCadence
+        .closest('.form__row')
+        .classList.remove('form__row--hidden');
+    } else {
+      editInputElevation
+        .closest('.form__row')
+        .classList.remove('form__row--hidden');
+      editInputCadence.closest('.form__row').classList.add('form__row--hidden');
+    }
+
+    // listener
+    // in time changing edit box title of item
+    editInputType.addEventListener('change', () => {
+      let activity =
+        editInputType.value.charAt(0).toUpperCase() +
+        editInputType.value.slice(1);
+      let rest = boxTitle.textContent.slice(8);
+
+      boxTitle.textContent = `${activity} ${rest}`;
+    });
+
+    // edit window visible
+    editBox.classList.remove('edit-box--hidden');
   }
 }
 const app = new App();
