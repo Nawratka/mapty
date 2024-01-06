@@ -109,6 +109,7 @@ a:visited {
 }
 
 .main-edits {
+  position: relative;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -129,6 +130,22 @@ a:visited {
 .main-edits .workout__icon {
   display: flex;
   margin: 0 0.8rem;
+}
+
+.sortby {
+  position: absolute;
+  bottom: 0;
+  right: 55px;
+  background-color: var(--color-dark--1);
+  border: 1px solid var(--color-light--1);
+  border-radius: 5px;
+}
+
+.sortby .sortby__way {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border-bottom: 1px dashed var(--color-light--1);
+  cursor: pointer;
 }
 
 .workout__edits .workout__icon {
@@ -271,7 +288,7 @@ a:visited {
   }
 }
 
-.edit-box--hidden {
+.edit-box--hidden, .sortby--hidden {
   display: none;
 }
 

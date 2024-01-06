@@ -2,6 +2,8 @@
 
 const form = document.querySelector('.form');
 const deleteAllItemsBtn = document.querySelector('.delall-btn');
+const sortBtn = document.querySelector('.sort-items-btn');
+const sortbyMenu = document.querySelector('.sortby');
 const containerWorkouts = document.querySelector('.workouts');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
@@ -100,7 +102,15 @@ class App {
     editInputType.addEventListener('change', this._toggleElevationField);
     // containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     containerWorkouts.addEventListener('click', this._clickCheck.bind(this));
-    deleteAllItemsBtn.addEventListener('click', this.reset);
+    deleteAllItemsBtn.addEventListener('click', () => {
+      if (!localStorage.getItem('workouts')) return;
+      this.reset;
+    });
+    sortBtn.addEventListener('click', () => {
+      if (!localStorage.getItem('workouts')) return;
+      sortbyMenu.classList.toggle('sortby--hidden');
+    });
+    sortbyMenu.addEventListener('click', this._chooseSortingWay);
     editBtnCancel.addEventListener('click', e => {
       e.preventDefault();
       editBox.classList.add('edit-box--hidden');
@@ -109,7 +119,7 @@ class App {
       // set new item from edit box
       this._newWorkout(e);
       console.log(this.#editedWorkout);
-      
+
       // establish item to cancel (edited old element) based on date
       const currentObjDate = this.#editedWorkout.date;
       const objToDel = this.#workouts.find(el => {
@@ -117,7 +127,7 @@ class App {
       });
       const liToDel = document.querySelector(`[data-id="${objToDel.id}"]`);
       this._deleteItem(liToDel);
-      
+
       // close edit window
       editBox.classList.add('edit-box--hidden');
     });
@@ -209,7 +219,6 @@ class App {
 
   _newWorkout(e) {
     const isDataEdited = e.target.classList.contains('form__btn--ok');
-    console.log(this.#editedWorkout);
 
     // helper functions
     const validInputs = (...inputs) =>
@@ -457,7 +466,7 @@ class App {
     let item = clickedElem.closest('li');
     let workoutObj = this.#workouts.find(el => el.id === item.dataset.id);
     this.#editedWorkout = workoutObj;
-    console.log(this.#editedWorkout);
+
     // edit box title of item
     let itemTitle = item.children[0].textContent;
     boxTitle.textContent = itemTitle;
@@ -512,6 +521,11 @@ class App {
 
     // edit window visible
     editBox.classList.remove('edit-box--hidden');
+  }
+  _chooseSortingWay(e) {
+    console.log(e.target);
+
+    sortbyMenu.classList.add('sortby--hidden');
   }
 }
 const app = new App();
