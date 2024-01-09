@@ -5,6 +5,7 @@ const deleteAllItemsBtn = document.querySelector('.delall-btn');
 const sortBtn = document.querySelector('.sort-items-btn');
 const sortbyMenu = document.querySelector('.sortby');
 const containerWorkouts = document.querySelector('.workouts');
+const workoutsBox = containerWorkouts.querySelector('.workouts__box');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
@@ -88,6 +89,7 @@ class App {
   #markers = [];
   #i = 0;
   #editedWorkout;
+  activities = [...this.#workouts];
 
   constructor() {
     // get user's position
@@ -96,21 +98,22 @@ class App {
     // get data from local storage
     this._getLocalStorage();
 
+    // listeners
     form.addEventListener('submit', this._newWorkout.bind(this));
-
     inputType.addEventListener('change', this._toggleElevationField);
     editInputType.addEventListener('change', this._toggleElevationField);
-    // containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     containerWorkouts.addEventListener('click', this._clickCheck.bind(this));
     deleteAllItemsBtn.addEventListener('click', () => {
       if (!localStorage.getItem('workouts')) return;
-      this.reset;
+      this.reset();
     });
     sortBtn.addEventListener('click', () => {
-      if (!localStorage.getItem('workouts')) return;
+      if (!localStorage.getItem('workouts') || this.#workouts.length === 1) return;
       sortbyMenu.classList.toggle('sortby--hidden');
     });
-    sortbyMenu.addEventListener('click', this._chooseSortingWay);
+    sortbyMenu.addEventListener('click', e => {
+      this._Sorting(e);
+    });
     editBtnCancel.addEventListener('click', e => {
       e.preventDefault();
       editBox.classList.add('edit-box--hidden');
@@ -118,7 +121,6 @@ class App {
     editBtnOk.addEventListener('click', e => {
       // set new item from edit box
       this._newWorkout(e);
-      console.log(this.#editedWorkout);
 
       // establish item to cancel (edited old element) based on date
       const currentObjDate = this.#editedWorkout.date;
@@ -388,7 +390,8 @@ class App {
     </li>
     `;
 
-    form.insertAdjacentHTML('afterend', html);
+    // form.insertAdjacentHTML('afterend', html);
+    workoutsBox.insertAdjacentHTML('afterbegin', html);
   }
 
   _moveToPopup(e) {
@@ -433,33 +436,61 @@ class App {
   }
 
   _deleteItem(elem) {
+    // define obj to del
+    let indexWorkoutToDel;
+    const objToDel = this.#workouts.find(function (el, i) {
+      indexWorkoutToDel = i;
+      return el.id === elem.dataset.id;
+    });
+
+    // define marker from array and map layer to del
+    let indexMarkerToDel;
+    let layerOnMapToDel;
+    const markerToDel = this.#markers.find(function (el, i) {
+      if (
+        el._latlng.lat === objToDel.coords[0] &&
+        el._latlng.lng === objToDel.coords[1]
+      )
+        indexMarkerToDel = i;
+      layerOnMapToDel = el._leaflet_id;
+      return el;
+    });
+
+    // remove layer from map
+    this.#map.removeLayer(this.#map._layers[layerOnMapToDel]);
+
+    // reduce array with markers(layers)
+    this.#markers.splice(markerToDel, 1);
+
+    // clear dates and local storage when no workouts
+    if (this.#workouts.length <= 1) this.reset();
+
+    // remove workout obj
+    this.#workouts.splice(indexWorkoutToDel, 1);
+
+    // update LS
+    this._updateLocalStorage(elem);
+
     // del elem from html
-    containerWorkouts.removeChild(elem);
+    workoutsBox.removeChild(elem);
+  }
 
-    // reduce array with workouts
-    this.#workouts.splice(elem, 1);
-
-    // clear local storage when no workouts
-    if (this.#workouts.length === 0) this.reset();
-
+  _updateLocalStorage(elem) {
     // fetch data from local storage
     const data = JSON.parse(localStorage.getItem('workouts'));
-
-    // remove outdated array
-    localStorage.removeItem('workouts');
+    if (!data) return;
 
     // find object to delete from fetched local storage data
     let elemToDel = data.find(el => el.id === elem.dataset.id);
+
+    // remove outdated array
+    localStorage.removeItem('workouts');
 
     // deleting
     data.splice(elemToDel, 1);
 
     // setting current data into local storage
     localStorage.setItem('workouts', JSON.stringify(data));
-
-    // remove single popup marker = remove layer from map
-    const indexMarkerToDel = elem.dataset.leafletid;
-    this.#map.removeLayer(this.#markers[indexMarkerToDel]);
   }
 
   _editItem(clickedElem) {
@@ -522,8 +553,32 @@ class App {
     // edit window visible
     editBox.classList.remove('edit-box--hidden');
   }
-  _chooseSortingWay(e) {
-    console.log(e.target);
+
+  _Sorting(e) {
+    workoutsBox.innerHTML = '';
+
+    // choose sorting way
+    let way = e.target.dataset.sortway;
+
+    // shallow copy of all aobjects
+    this.activities = this.#workouts.slice();
+
+    // in order to sort by speed: to obj 'cycling' added property speed
+    this.activities.forEach(function (act) {
+      if (act.type === 'running') {
+        act.speed = act.pace;
+      }
+    });
+
+    // sorting
+    this.activities.sort((a, b) => {
+      return a[way] - b[way];
+    });
+
+    // display items of sorted array
+    this.activities.forEach(act => {
+      this._renderWorkout(act);
+    });
 
     sortbyMenu.classList.add('sortby--hidden');
   }
