@@ -87,9 +87,8 @@ class App {
   #mapEvent;
   #workouts = [];
   #markers = [];
-  #i = 0;
+  #i = this.#markers.length;
   #editedWorkout;
-  activities = [...this.#workouts];
 
   constructor() {
     // get user's position
@@ -108,7 +107,8 @@ class App {
       this.reset();
     });
     sortBtn.addEventListener('click', () => {
-      if (!localStorage.getItem('workouts') || this.#workouts.length === 1) return;
+      if (!localStorage.getItem('workouts') || this.#workouts.length === 1)
+        return;
       sortbyMenu.classList.toggle('sortby--hidden');
     });
     sortbyMenu.addEventListener('click', e => {
@@ -276,7 +276,6 @@ class App {
 
       workout = new Cycling([lat, lng], distance, duration, elevation);
     }
-
     // add new object to workout array
     this.#workouts.push(workout);
 
@@ -314,8 +313,7 @@ class App {
       .setPopupContent(
         `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
       )
-      .openPopup().leafletid = this.#i;
-
+      .openPopup();
     this.#i++;
 
     // L.marker(workout.coords)
@@ -337,9 +335,7 @@ class App {
 
   _renderWorkout(workout) {
     let html = `
-    <li class="workout workout--${workout.type}" data-id="${
-      workout.id
-    }" data-leafletId="${this.#i}">
+    <li class="workout workout--${workout.type}" data-id="${workout.id}">
     <h2 class="workout__title">${workout.description}</h2>
     <div class="workout__details">
       <span class="workout__icon">${
@@ -426,8 +422,30 @@ class App {
     this.#workouts = data;
 
     this.#workouts.forEach(work => {
+      work.type === 'running'
+        ? Object.setPrototypeOf(work, Running.prototype)
+        : Object.setPrototypeOf(work, Cycling.prototype);
+
       this._renderWorkout(work);
     });
+  }
+
+  _updateLocalStorage(elem) {
+    // fetch data from local storage
+    const data = JSON.parse(localStorage.getItem('workouts'));
+    if (!data) return;
+
+    // find object to delete from fetched local storage data
+    let elemToDel = data.find(el => el.id === elem.dataset.id);
+
+    // remove outdated array
+    localStorage.removeItem('workouts');
+
+    // deleting
+    data.splice(elemToDel, 1);
+
+    // setting current data into local storage
+    localStorage.setItem('workouts', JSON.stringify(data));
   }
 
   reset() {
@@ -473,24 +491,6 @@ class App {
 
     // del elem from html
     workoutsBox.removeChild(elem);
-  }
-
-  _updateLocalStorage(elem) {
-    // fetch data from local storage
-    const data = JSON.parse(localStorage.getItem('workouts'));
-    if (!data) return;
-
-    // find object to delete from fetched local storage data
-    let elemToDel = data.find(el => el.id === elem.dataset.id);
-
-    // remove outdated array
-    localStorage.removeItem('workouts');
-
-    // deleting
-    data.splice(elemToDel, 1);
-
-    // setting current data into local storage
-    localStorage.setItem('workouts', JSON.stringify(data));
   }
 
   _editItem(clickedElem) {
