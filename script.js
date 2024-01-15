@@ -88,7 +88,6 @@ class App {
   #mapEvent;
   #workouts = [];
   #markers = [];
-  #i = this.#markers.length;
   #editedWorkout;
   #isEdited = false;
 
@@ -292,14 +291,21 @@ class App {
   }
 
   _renderWorkoutMarker(workout) {
-    this.#markers[this.#i] = new L.Marker(
+    // remove empty slots from array
+    this.#markers = this.#markers.filter(n => n);
+    this.#markers.forEach(el=>console.log(el))
+    
+    // index for creation new marker
+    let i = this.#markers.length;
+
+    this.#markers[i] = new L.Marker(
       [workout.coords[0], workout.coords[1]],
       {
         draggable: true,
       }
     );
-    this.#map.addLayer(this.#markers[this.#i]);
-    this.#markers[this.#i]
+    this.#map.addLayer(this.#markers[i]);
+    this.#markers[i]
       .bindPopup(
         L.popup({
           maxWidth: 250,
@@ -313,7 +319,6 @@ class App {
         `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
       )
       .openPopup().objId = workout.id;
-    this.#i++;
 
     // L.marker(workout.coords)
     //   .addTo(this.#map)
@@ -454,20 +459,13 @@ class App {
 
   _deleteItem(elem) {
     // define obj to del
-    const objToDel = this.#workouts.find(function (el) {
-      return el.id === elem.dataset.id;
-    });
+    const objToDel = this.#workouts.find(el => el.id === elem.dataset.id);
+
+    // remove empty slots from array
+    this.#markers = this.#markers.filter(n => n);
 
     // define marker from array (#markers) to del
-    let markerToDel;
-    for (let i = 0; i < this.#markers.length; i++) {
-      if (!this.#markers[i]) {
-        false;
-      } else {
-        if (this.#markers[i].objId === objToDel.id)
-          markerToDel = this.#markers[i];
-      }
-    }
+    const markerToDel = this.#markers.find(el => el.objId === objToDel.id);
 
     // remove layer from map
     const layerOnMapToDel = markerToDel._leaflet_id;
