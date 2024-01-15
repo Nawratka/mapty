@@ -11,6 +11,7 @@ const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
+const formErrorText = form.querySelector('.form__error');
 
 // EDIT-BOX
 const editBox = document.querySelector('.edit-box');
@@ -22,6 +23,7 @@ let editInputDistance = document.querySelector('.edit__input--distance');
 let editInputDuration = document.querySelector('.edit__input--duration');
 let editInputCadence = document.querySelector('.edit__input--cadence');
 let editInputElevation = document.querySelector('.edit__input--elevation');
+const editErrorText = editForm.querySelector('.form__error');
 let boxTitle = editBox.querySelector('.edited-title');
 
 class Workout {
@@ -118,6 +120,7 @@ class App {
     editBtnCancel.addEventListener('click', e => {
       e.preventDefault();
       editBox.classList.add('edit-box--hidden');
+      editErrorText.classList.add('form__error--hidden');
       this.#isEdited = false;
     });
     editForm.addEventListener('submit', this._newWorkout.bind(this));
@@ -179,6 +182,7 @@ class App {
     inputElevation.closest('.form__row').classList.add('form__row--hidden');
     inputCadence.closest('.form__row').classList.remove('form__row--hidden');
     inputDistance.focus();
+    formErrorText.classList.add('form__error--hidden');
   }
 
   _hideForm() {
@@ -208,9 +212,9 @@ class App {
     inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
   }
 
+  // BRAND NEW WORKOUT AND NEW FROM EDITION
   _newWorkout(e) {
     e.preventDefault();
-    // BRAND NEW WORKOUT AND NEW FROM EDITION
 
     // helper functions
     const validInputs = (...inputs) =>
@@ -245,7 +249,8 @@ class App {
         !validInputs(distance, duration, cadence) ||
         !allPositive(distance, duration, cadence)
       ) {
-        return alert('Inputs have to be positive numbers!');
+        this._displayErrorText();
+        return;
       }
 
       workout = new Running([lat, lng], distance, duration, cadence);
@@ -258,9 +263,9 @@ class App {
         !validInputs(distance, duration, elevation) ||
         !allPositive(distance, duration)
       ) {
-        return alert('Inputs have to be positive numbers!');
+        this._displayErrorText();
+        return;
       }
-
       workout = new Cycling([lat, lng], distance, duration, elevation);
     }
 
@@ -290,20 +295,27 @@ class App {
     }
   }
 
+  _displayErrorText() {
+    if (this.#isEdited) {
+      editErrorText.classList.remove('form__error--hidden');
+      return;
+    }
+    if (!this.#isEdited) {
+      formErrorText.classList.remove('form__error--hidden');
+      return;
+    }
+  }
+
   _renderWorkoutMarker(workout) {
     // remove empty slots from array
     this.#markers = this.#markers.filter(n => n);
-    this.#markers.forEach(el=>console.log(el))
-    
+
     // index for creation new marker
     let i = this.#markers.length;
 
-    this.#markers[i] = new L.Marker(
-      [workout.coords[0], workout.coords[1]],
-      {
-        draggable: true,
-      }
-    );
+    this.#markers[i] = new L.Marker([workout.coords[0], workout.coords[1]], {
+      draggable: true,
+    });
     this.#map.addLayer(this.#markers[i]);
     this.#markers[i]
       .bindPopup(
@@ -319,22 +331,6 @@ class App {
         `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
       )
       .openPopup().objId = workout.id;
-
-    // L.marker(workout.coords)
-    //   .addTo(this.#map)
-    //   .bindPopup(
-    //     L.popup({
-    //       maxWidth: 250,
-    //       minWidth: 100,
-    //       autoClose: false,
-    //       closeOnClick: false,
-    //       className: `${workout.type}-popup`,
-    //     })
-    //   )
-    //   .setPopupContent(
-    //     `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
-    //   )
-    //   .openPopup();
   }
 
   _renderWorkout(workout) {
@@ -452,11 +448,6 @@ class App {
     localStorage.setItem('workouts', JSON.stringify(data));
   }
 
-  reset() {
-    localStorage.removeItem('workouts');
-    location.reload();
-  }
-
   _deleteItem(elem) {
     // define obj to del
     const objToDel = this.#workouts.find(el => el.id === elem.dataset.id);
@@ -490,6 +481,7 @@ class App {
   // only sets edited item values into edit box
   _editItem(e) {
     this.#isEdited = true;
+    editErrorText.classList.add('form__error--hidden');
     let item = e.target.closest('li');
     let workoutObj = this.#workouts.find(el => el.id === item.dataset.id);
     this.#editedWorkout = workoutObj;
@@ -568,6 +560,11 @@ class App {
     });
 
     sortbyMenu.classList.add('sortby--hidden');
+  }
+
+  reset() {
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 }
 const app = new App();
