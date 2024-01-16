@@ -1,9 +1,12 @@
 'use strict';
 
 const form = document.querySelector('.form');
-const deleteAllItemsBtn = document.querySelector('.delall-btn');
+const currentLocBtn = document.querySelector('.localization-btn');
+const seeAllBtn = document.querySelector('.maximize-btn');
 const sortBtn = document.querySelector('.sort-items-btn');
+const deleteAllItemsBtn = document.querySelector('.delall-btn');
 const sortbyMenu = document.querySelector('.sortby');
+const containerMainEdits = document.querySelector('.main-edits');
 const containerWorkouts = document.querySelector('.workouts');
 const workoutsBox = containerWorkouts.querySelector('.workouts__box');
 const inputType = document.querySelector('.form__input--type');
@@ -105,15 +108,10 @@ class App {
     inputType.addEventListener('change', this._toggleElevationField);
     editInputType.addEventListener('change', this._toggleElevationField);
     containerWorkouts.addEventListener('click', this._clickCheck.bind(this));
-    deleteAllItemsBtn.addEventListener('click', () => {
-      if (!localStorage.getItem('workouts')) return;
-      this.reset();
-    });
-    sortBtn.addEventListener('click', () => {
-      if (!localStorage.getItem('workouts') || this.#workouts.length === 1)
-        return;
-      sortbyMenu.classList.toggle('sortby--hidden');
-    });
+    containerMainEdits.addEventListener(
+      'click',
+      this._mainEditCheck.bind(this)
+    );
     sortbyMenu.addEventListener('click', e => {
       this._Sorting(e);
     });
@@ -141,6 +139,43 @@ class App {
     this._moveToPopup(e);
   }
 
+  _mainEditCheck(e) {
+    const clickedElem = e.target;
+    // HERE BTN
+    if (clickedElem.classList.contains('localization-btn')) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          this._setCurrentPosition.bind(this)
+        );
+      }
+      return;
+    }
+
+    // SEE ALL MARKERS BTN
+    if (clickedElem.classList.contains('maximize-btn')) {
+      if (this.#markers) {
+        const group = new L.featureGroup(this.#markers);
+        this.#map.fitBounds(group.getBounds());
+      }
+      return;
+    }
+
+    // SORT BTN
+    if (clickedElem.classList.contains('sort-items-btn')) {
+      if (!localStorage.getItem('workouts') || this.#workouts.length === 1)
+        return;
+      sortbyMenu.classList.toggle('sortby--hidden');
+      return;
+    }
+
+    // DELETE ALL BTN
+    if (clickedElem.classList.contains('delall-btn')) {
+      if (!localStorage.getItem('workouts')) return;
+      this.reset();
+      return;
+    }
+  }
+
   _getPosition() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -153,14 +188,9 @@ class App {
   }
 
   _loadMap(position) {
-    const { latitude } = position.coords;
-    const { longitude } = position.coords;
-    // console.log(`https://www.google.pl/maps/@${latitude},${longitude}`);
+    // map initialization
+    this.#map = L.map('map');
 
-    const coords = [latitude, longitude];
-    this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
-    // openstreet is open source map, it could be also googlestreet
-    // map contains from tiles, style of map we can change openstreetmap.(...)
     L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -173,6 +203,16 @@ class App {
     this.#workouts.forEach(work => {
       this._renderWorkoutMarker(work);
     });
+
+    // set current position by page load
+    this._setCurrentPosition(position);
+  }
+
+  _setCurrentPosition(position) {
+    const { latitude } = position.coords;
+    const { longitude } = position.coords;
+    const coords = [latitude, longitude];
+    this.#map.setView(coords, this.#mapZoomLevel);
   }
 
   _showForm(mapE) {
