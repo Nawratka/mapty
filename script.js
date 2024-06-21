@@ -155,8 +155,6 @@ class App {
 
     const coords = [latitude, longitude];
     this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
-    // openstreet is open source map, it could be also googlestreet
-    // map contains from tiles, style of map we can change openstreetmap.(...)
     L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
