@@ -1,4 +1,4 @@
-# Rock Paper Scissors Game
+# Mapty App
 
 LIVE: 
 
