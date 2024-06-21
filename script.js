@@ -1,16 +1,24 @@
 'use strict';
 
 const form = document.querySelector('.form');
+const currentLocBtn = document.querySelector('.localization-btn');
+const seeAllBtn = document.querySelector('.maximize-btn');
+const sortBtn = document.querySelector('.sort-items-btn');
 const deleteAllItemsBtn = document.querySelector('.delall-btn');
+const sortbyMenu = document.querySelector('.sortby');
+const containerMainEdits = document.querySelector('.main-edits');
 const containerWorkouts = document.querySelector('.workouts');
+const workoutsBox = containerWorkouts.querySelector('.workouts__box');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
-///edit///////////////////
+const formErrorText = form.querySelector('.form__error');
+
 // EDIT-BOX
 const editBox = document.querySelector('.edit-box');
+const editForm = editBox.querySelector('.form--edit');
 const editBtnCancel = document.querySelector('.form__btn--cancel');
 const editBtnOk = document.querySelector('.form__btn--ok');
 let editInputType = document.querySelector('.edit__input--type');
@@ -18,6 +26,7 @@ let editInputDistance = document.querySelector('.edit__input--distance');
 let editInputDuration = document.querySelector('.edit__input--duration');
 let editInputCadence = document.querySelector('.edit__input--cadence');
 let editInputElevation = document.querySelector('.edit__input--elevation');
+const editErrorText = editForm.querySelector('.form__error');
 let boxTitle = editBox.querySelector('.edited-title');
 
 class Workout {
@@ -84,8 +93,8 @@ class App {
   #mapEvent;
   #workouts = [];
   #markers = [];
-  #i = 0;
   #editedWorkout;
+  #isEdited = false;
 
   constructor() {
     // get user's position
@@ -94,33 +103,25 @@ class App {
     // get data from local storage
     this._getLocalStorage();
 
+    // listeners
     form.addEventListener('submit', this._newWorkout.bind(this));
-
     inputType.addEventListener('change', this._toggleElevationField);
     editInputType.addEventListener('change', this._toggleElevationField);
-    // containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     containerWorkouts.addEventListener('click', this._clickCheck.bind(this));
-    deleteAllItemsBtn.addEventListener('click', this.reset);
+    containerMainEdits.addEventListener(
+      'click',
+      this._mainEditCheck.bind(this)
+    );
+    sortbyMenu.addEventListener('click', e => {
+      this._Sorting(e);
+    });
     editBtnCancel.addEventListener('click', e => {
       e.preventDefault();
       editBox.classList.add('edit-box--hidden');
+      editErrorText.classList.add('form__error--hidden');
+      this.#isEdited = false;
     });
-    editBtnOk.addEventListener('click', e => {
-      // set new item from edit box
-      this._newWorkout(e);
-      console.log(this.#editedWorkout);
-      
-      // establish item to cancel (edited old element) based on date
-      const currentObjDate = this.#editedWorkout.date;
-      const objToDel = this.#workouts.find(el => {
-        if (el.date === currentObjDate) return el;
-      });
-      const liToDel = document.querySelector(`[data-id="${objToDel.id}"]`);
-      this._deleteItem(liToDel);
-      
-      // close edit window
-      editBox.classList.add('edit-box--hidden');
-    });
+    editForm.addEventListener('submit', this._newWorkout.bind(this));
   }
 
   _clickCheck(e) {
@@ -131,10 +132,48 @@ class App {
       return;
     }
     if (clickedElem.classList.contains('edit-item')) {
-      this._editItem.call(this, clickedElem);
+      // this.#editedWorkout = clickedElem;
+      this._editItem.call(this, e);
       return;
     }
     this._moveToPopup(e);
+  }
+
+  _mainEditCheck(e) {
+    const clickedElem = e.target;
+    // HERE BTN
+    if (clickedElem.classList.contains('localization-btn')) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          this._setCurrentPosition.bind(this)
+        );
+      }
+      return;
+    }
+
+    // SEE ALL MARKERS BTN
+    if (clickedElem.classList.contains('maximize-btn')) {
+      if (this.#markers) {
+        const group = new L.featureGroup(this.#markers);
+        this.#map.fitBounds(group.getBounds());
+      }
+      return;
+    }
+
+    // SORT BTN
+    if (clickedElem.classList.contains('sort-items-btn')) {
+      if (!localStorage.getItem('workouts') || this.#workouts.length === 1)
+        return;
+      sortbyMenu.classList.toggle('sortby--hidden');
+      return;
+    }
+
+    // DELETE ALL BTN
+    if (clickedElem.classList.contains('delall-btn')) {
+      if (!localStorage.getItem('workouts')) return;
+      this.reset();
+      return;
+    }
   }
 
   _getPosition() {
@@ -149,12 +188,15 @@ class App {
   }
 
   _loadMap(position) {
-    const { latitude } = position.coords;
-    const { longitude } = position.coords;
-    // console.log(`https://www.google.pl/maps/@${latitude},${longitude}`);
+    // removes old map before refreshing
+    if (this.#map != undefined) this.#map.remove();
+    
+    // map initialization
+    // this.#map = L.map('map');
+    const coords = [position.coords.latitude, position.coords.longitude];
 
-    const coords = [latitude, longitude];
     this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
+
     L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -167,6 +209,16 @@ class App {
     this.#workouts.forEach(work => {
       this._renderWorkoutMarker(work);
     });
+
+    // set current position by page load
+    this._setCurrentPosition(position);
+  }
+
+  _setCurrentPosition(position) {
+    const { latitude } = position.coords;
+    const { longitude } = position.coords;
+    const coords = [latitude, longitude];
+    this.#map.setView(coords, this.#mapZoomLevel);
   }
 
   _showForm(mapE) {
@@ -176,6 +228,7 @@ class App {
     inputElevation.closest('.form__row').classList.add('form__row--hidden');
     inputCadence.closest('.form__row').classList.remove('form__row--hidden');
     inputDistance.focus();
+    formErrorText.classList.add('form__error--hidden');
   }
 
   _hideForm() {
@@ -205,28 +258,25 @@ class App {
     inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
   }
 
+  // BRAND NEW WORKOUT AND NEW FROM EDITION
   _newWorkout(e) {
-    const isDataEdited = e.target.classList.contains('form__btn--ok');
-    console.log(this.#editedWorkout);
+    e.preventDefault();
 
     // helper functions
     const validInputs = (...inputs) =>
       inputs.every(inp => Number.isFinite(inp));
     const allPositive = (...inputs) => inputs.every(inp => inp > 0);
 
-    e.preventDefault();
-
     let type, distance, duration, lat, lng;
 
     // get data
-    if (isDataEdited) {
+    if (this.#isEdited === true) {
       // get data from edit window
       type = editInputType.value;
       distance = +editInputDistance.value;
       duration = +editInputDuration.value;
       lat = this.#editedWorkout.coords[0];
       lng = this.#editedWorkout.coords[1];
-      // const { lat, lng } = this.#editedWorkout.coords;
     } else {
       // get data from form
       type = inputType.value;
@@ -240,12 +290,13 @@ class App {
     // check if data is valid
     if (type === 'running') {
       let cadence = +inputCadence.value;
-      if (isDataEdited) cadence = +editInputCadence.value;
+      if (this.#editedWorkout) cadence = +editInputCadence.value;
       if (
         !validInputs(distance, duration, cadence) ||
         !allPositive(distance, duration, cadence)
       ) {
-        return alert('Inputs have to be positive numbers!');
+        this._displayErrorText();
+        return;
       }
 
       workout = new Running([lat, lng], distance, duration, cadence);
@@ -253,14 +304,14 @@ class App {
 
     if (type === 'cycling') {
       let elevation = +inputElevation.value;
-      if (isDataEdited) elevation = +editInputElevation.value;
+      if (this.#editedWorkout) elevation = +editInputElevation.value;
       if (
         !validInputs(distance, duration, elevation) ||
         !allPositive(distance, duration)
       ) {
-        return alert('Inputs have to be positive numbers!');
+        this._displayErrorText();
+        return;
       }
-
       workout = new Cycling([lat, lng], distance, duration, elevation);
     }
 
@@ -278,17 +329,41 @@ class App {
 
     // set local storage to all workouts
     this._setLocalStorage();
+
+    // delete old workout when editing
+    if (this.#isEdited === true) {
+      const itemToDel = document.querySelector(
+        `[data-id="${this.#editedWorkout.id}"]`
+      );
+      this._deleteItem(itemToDel);
+      this.#isEdited = false;
+      editBox.classList.add('edit-box--hidden');
+    }
+  }
+
+  _displayErrorText() {
+    if (this.#isEdited) {
+      editErrorText.classList.remove('form__error--hidden');
+      return;
+    }
+    if (!this.#isEdited) {
+      formErrorText.classList.remove('form__error--hidden');
+      return;
+    }
   }
 
   _renderWorkoutMarker(workout) {
-    this.#markers[this.#i] = new L.Marker(
-      [workout.coords[0], workout.coords[1]],
-      {
-        draggable: true,
-      }
-    );
-    this.#map.addLayer(this.#markers[this.#i]);
-    this.#markers[this.#i]
+    // remove empty slots from array
+    this.#markers = this.#markers.filter(n => n);
+
+    // index for creation new marker
+    let i = this.#markers.length;
+
+    this.#markers[i] = new L.Marker([workout.coords[0], workout.coords[1]], {
+      draggable: true,
+    });
+    this.#map.addLayer(this.#markers[i]);
+    this.#markers[i]
       .bindPopup(
         L.popup({
           maxWidth: 250,
@@ -301,32 +376,12 @@ class App {
       .setPopupContent(
         `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
       )
-      .openPopup().leafletid = this.#i;
-
-    this.#i++;
-
-    // L.marker(workout.coords)
-    //   .addTo(this.#map)
-    //   .bindPopup(
-    //     L.popup({
-    //       maxWidth: 250,
-    //       minWidth: 100,
-    //       autoClose: false,
-    //       closeOnClick: false,
-    //       className: `${workout.type}-popup`,
-    //     })
-    //   )
-    //   .setPopupContent(
-    //     `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
-    //   )
-    //   .openPopup();
+      .openPopup().objId = workout.id;
   }
 
   _renderWorkout(workout) {
     let html = `
-    <li class="workout workout--${workout.type}" data-id="${
-      workout.id
-    }" data-leafletId="${this.#i}">
+    <li class="workout workout--${workout.type}" data-id="${workout.id}">
     <h2 class="workout__title">${workout.description}</h2>
     <div class="workout__details">
       <span class="workout__icon">${
@@ -377,7 +432,8 @@ class App {
     </li>
     `;
 
-    form.insertAdjacentHTML('afterend', html);
+    // form.insertAdjacentHTML('afterend', html);
+    workoutsBox.insertAdjacentHTML('afterbegin', html);
   }
 
   _moveToPopup(e) {
@@ -412,50 +468,70 @@ class App {
     this.#workouts = data;
 
     this.#workouts.forEach(work => {
+      work.type === 'running'
+        ? Object.setPrototypeOf(work, Running.prototype)
+        : Object.setPrototypeOf(work, Cycling.prototype);
+
       this._renderWorkout(work);
     });
   }
 
-  reset() {
-    localStorage.removeItem('workouts');
-    location.reload();
-  }
-
-  _deleteItem(elem) {
-    // del elem from html
-    containerWorkouts.removeChild(elem);
-
-    // reduce array with workouts
-    this.#workouts.splice(elem, 1);
-
-    // clear local storage when no workouts
-    if (this.#workouts.length === 0) this.reset();
-
+  _updateLocalStorage(elem) {
     // fetch data from local storage
     const data = JSON.parse(localStorage.getItem('workouts'));
-
-    // remove outdated array
-    localStorage.removeItem('workouts');
+    if (!data) return;
 
     // find object to delete from fetched local storage data
     let elemToDel = data.find(el => el.id === elem.dataset.id);
+
+    // remove outdated array
+    localStorage.removeItem('workouts');
 
     // deleting
     data.splice(elemToDel, 1);
 
     // setting current data into local storage
     localStorage.setItem('workouts', JSON.stringify(data));
-
-    // remove single popup marker = remove layer from map
-    const indexMarkerToDel = elem.dataset.leafletid;
-    this.#map.removeLayer(this.#markers[indexMarkerToDel]);
   }
 
-  _editItem(clickedElem) {
-    let item = clickedElem.closest('li');
+  _deleteItem(elem) {
+    // define obj to del
+    const objToDel = this.#workouts.find(el => el.id === elem.dataset.id);
+
+    // remove empty slots from array
+    this.#markers = this.#markers.filter(n => n);
+
+    // define marker from array (#markers) to del
+    const markerToDel = this.#markers.find(el => el.objId === objToDel.id);
+
+    // remove layer from map
+    const layerOnMapToDel = markerToDel._leaflet_id;
+    this.#map.removeLayer(this.#map._layers[layerOnMapToDel]);
+
+    // reduce array with markers(layers)
+    this.#markers.splice(this.#markers.indexOf(markerToDel), 1);
+
+    // clear dates and local storage when no workouts
+    if (this.#workouts.length <= 1) this.reset();
+
+    // remove workout obj
+    this.#workouts.splice(this.#workouts.indexOf(objToDel), 1);
+
+    // update LS
+    this._updateLocalStorage(elem);
+
+    // del elem from html
+    workoutsBox.removeChild(elem);
+  }
+
+  // only sets edited item values into edit box
+  _editItem(e) {
+    this.#isEdited = true;
+    editErrorText.classList.add('form__error--hidden');
+    let item = e.target.closest('li');
     let workoutObj = this.#workouts.find(el => el.id === item.dataset.id);
     this.#editedWorkout = workoutObj;
-    console.log(this.#editedWorkout);
+
     // edit box title of item
     let itemTitle = item.children[0].textContent;
     boxTitle.textContent = itemTitle;
@@ -466,23 +542,13 @@ class App {
       ? (editInputType.value = 'running')
       : (editInputType.value = 'cycling');
 
-    // distance
-    const distance = item.children[1].children[1].textContent;
-    editInputDistance.value = distance;
+    editInputDistance.value =
+      editInputDuration.value =
+      editInputCadence.value =
+      editInputElevation.value =
+        '';
 
-    // duration
-    const duration = item.children[2].children[1].textContent;
-    editInputDuration.value = duration;
-
-    // cadence
-    const cadence = item.children[3].children[1].textContent;
-    editInputCadence.value = cadence;
-
-    // elevation
-    const elevation = item.children[4].children[1].textContent;
-    editInputElevation.value = elevation;
-
-    // setting wheter elev / cadence should be displayed
+    // setting wheter elev / cadence input should be displayed
     if (type === 'running') {
       editInputElevation
         .closest('.form__row')
@@ -510,6 +576,41 @@ class App {
 
     // edit window visible
     editBox.classList.remove('edit-box--hidden');
+    editInputDistance.focus();
+  }
+
+  _Sorting(e) {
+    workoutsBox.innerHTML = '';
+
+    // choose sorting way
+    let way = e.target.dataset.sortway;
+
+    // shallow copy of all aobjects
+    this.activities = this.#workouts.slice();
+
+    // in order to sort by speed: to obj 'cycling' added property speed
+    this.activities.forEach(function (act) {
+      if (act.type === 'running') {
+        act.speed = act.pace;
+      }
+    });
+
+    // sorting
+    this.activities.sort((a, b) => {
+      return a[way] - b[way];
+    });
+
+    // display items of sorted array
+    this.activities.forEach(act => {
+      this._renderWorkout(act);
+    });
+
+    sortbyMenu.classList.add('sortby--hidden');
+  }
+
+  reset() {
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 }
 const app = new App();
